@@ -69,13 +69,17 @@ pub fn create_default_event_loop() -> EventLoop {
 }
 
 #[cfg(target_os = "android")]
-static ANDROID_APP: std::sync::OnceLock<android_activity::AndroidApp> = std::sync::OnceLock::new();
+static ANDROID_APP: std::sync::Mutex<Option<android_activity::AndroidApp>> =
+    std::sync::Mutex::new(None);
 
 #[cfg(target_os = "android")]
 #[cfg_attr(docsrs, doc(cfg(target_os = "android")))]
 /// Set the current [`AndroidApp`](android_activity::AndroidApp).
+///
+/// Call this from `android_main` for each activity instance before creating the event loop.
 pub fn set_android_app(app: android_activity::AndroidApp) {
-    ANDROID_APP.set(app).unwrap()
+    let previous = ANDROID_APP.lock().unwrap().replace(app);
+    drop(previous);
 }
 
 #[cfg(target_os = "android")]
@@ -83,7 +87,7 @@ pub fn set_android_app(app: android_activity::AndroidApp) {
 /// Get the current [`AndroidApp`](android_activity::AndroidApp).
 /// This will panic if the android activity has not been setup with [`set_android_app`].
 pub fn current_android_app() -> android_activity::AndroidApp {
-    ANDROID_APP.get().unwrap().clone()
+    ANDROID_APP.lock().unwrap().as_ref().unwrap().clone()
 }
 
 pub struct BlitzShellProvider {
